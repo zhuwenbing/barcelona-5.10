@@ -452,6 +452,19 @@ config GOLDFISH
 	def_bool y
 	depends on X86_GOLDFISH
 
+config X86_INTEL_CE_GEN3
+	bool "CE5300 (GEN3) TV/NAS platform"
+	depends on PCI
+	depends on X86_EXTENDED_PLATFORM
+	help
+	  Select for the Intel CE media processor (CE5300) SOC.
+
+config BARCELONA_BOARD
+	bool "Winsun Barcelona board support"
+	depends on X86_INTEL_CE_GEN3
+	help
+	  Support LEDs, FAN, and Buttons for Barcelona board.
+
 config RETPOLINE
 	bool "Avoid speculative indirect branches in kernel"
 	default y
