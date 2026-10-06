@@ -11,9 +11,9 @@
 - 基线版本：Linux 5.10.1
 - 架构：x86_64
 - 当前分支：`barcelona-5.10-port`
-- 当前提交：`2bb256842d63`
+- 当前提交：`fdac201dc919`
 - GitHub 分支：`zhuwenbing/barcelona-5.10.git:barcelona-5.10-port`
-- 远端提交与本地提交一致：`2bb256842d63`
+- 远端提交与本地提交一致：`fdac201dc919`
 - 工作区状态：干净
 - 已生成产物：
   - `arch/x86/boot/bzImage`：约 9.0 MB
@@ -95,6 +95,7 @@
 - `xrealloc()` 的零尺寸请求处理。
 - 对无符号表 `thunk_64.o` 的兼容性处理，包括 `objtool` 跳过验证。
 - Linux 5.10 的 `proc_ops`、`timer_setup` 和 SPI 生命周期 API 迁移。
+- CE5xx SPI 内存 BAR 映射失败检查，已从错误的 `regs_base` 改为 `mem_base`。
 
 当前构建配置为 `CONFIG_PREEMPT_VOLUNTARY=y`，因此修复后的构建结果不能被简单地等同于原始无预emption 场景；真实配置下的行为仍需验证。
 
@@ -113,6 +114,8 @@ make -j"$(nproc)" bzImage modules
 - `vmlinux` 已生成。
 - `git diff --check` 通过。
 - 构建日志中没有编译或链接错误。
+- SPI 内存 BAR 检查修复已通过构建验证。
+- 当前环境没有 QEMU 可执行文件，未完成真实设备或虚拟机启动验证。
 - `CONFIG_X86_INTEL_CE_GEN3=y`
 - `CONFIG_BARCELONA_BOARD=y`
 - `CONFIG_SPI_DYNAMIC=y`
@@ -167,6 +170,7 @@ make -j"$(nproc)" bzImage modules
 - 修复旧内核代码中的可执行栈警告。
 - 统一函数风格和注释格式。
 - 提升脚本和平台驱动的生命周期安全性。
+- 在目标 Barcelona 设备上验证 CE5xx PCI、SPI flash、GPIO、LED、风扇和看门狗。
 
 ### 6.4 构建与 CI
 
@@ -179,7 +183,7 @@ make -j"$(nproc)" bzImage modules
 ## 7. 注意事项
 
 1. 当前代码基于 Linux 5.10.1，不应直接视为 Linux 4.3.3 代码的最终版本。
-2. 当前配置关闭了 `CONFIG_PREEMPTION`，以绕过空符号表 thunk 问题；需要确认该配置在目标设备上的兼容性。
+2. 当前配置使用 `CONFIG_PREEMPT_VOLUNTARY=y`；原始无预emption 场景中的 thunk 兼容性需要在目标配置下继续验证。
 3. `CONFIG_STACK_VALIDATION` 和 `CONFIG_UNWINDER_ORC` 会影响构建流程，需要在其他配置下重新验证。
 4. CE Gen3 PCI 模拟代码使用了大量本地声明和模拟注册逻辑，可能需要基于真实 PCI 配置进一步测试。
 5. SPI flash 设备创建与释放流程需要在实际 PCI 设备上验证，尤其是异常探测和电源管理场景。
