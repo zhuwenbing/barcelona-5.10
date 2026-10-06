@@ -715,7 +715,7 @@ static int ce5xx_sflash_probe (struct pci_dev *pdev,
 		goto out_release_master;
 	}
 	c->mem_base = (void __iomem * )pci_ioremap_bar(pdev, 1);
-	if (!c->regs_base){
+	if (!c->mem_base){
 		dev_err(&pdev->dev, "error, failed to ioremap sflash mem space, mem_base %x\n",(uint32_t)c->mem_base);
 		ret = -ENOMEM;
 		goto out_release_bar0;
