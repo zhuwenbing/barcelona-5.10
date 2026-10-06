@@ -20,7 +20,9 @@ CFLAGS_syscall_x32.o		+= -fno-stack-protector
 CFLAGS_syscall_64.o		+= $(call cc-option,-Wno-override-init,)
 CFLAGS_syscall_32.o		+= $(call cc-option,-Wno-override-init,)
 CFLAGS_syscall_x32.o		+= $(call cc-option,-Wno-override-init,)
-
+# The thunk object contains no symbols when CONFIG_PREEMPTION is disabled.
+# objtool requires a symbol table for stack metadata validation.
+OBJECT_FILES_NON_STANDARD_thunk_$(BITS).o := y
 obj-y				:= entry_$(BITS).o thunk_$(BITS).o syscall_$(BITS).o
 obj-y				+= common.o
 

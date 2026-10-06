@@ -749,18 +749,28 @@ static int ce5xx_sflash_probe (struct pci_dev *pdev,
 	c->csr_receiver	= ce5xx_sflash_csr_receiver;
 	c->dma_receiver	= ce5xx_sflash_dma_receiver;
 	
-	spi_register_board_info(CE5xx_sflash_devices,ARRAY_SIZE(CE5xx_sflash_devices));
-
 	ret = spi_register_master(master);
 	if (ret)
-		goto out_unregister_board;
+		goto out_release_master;
+
+	c->spi_device = spi_new_device(master, &(struct spi_board_info){
+		.modalias = "m25p80",
+		.chip_select = 0,
+		.bus_num = 1,
+	});
+	if (!c->spi_device) {
+		ret = -ENODEV;
+		goto out_unregister_master;
+	}
 
 	c->reboot_notifier	= &ce5xx_sflash_reboot_notifier;
 	register_reboot_notifier(c->reboot_notifier);
 	return 0;
 
-out_unregister_board:	
-	spi_unregister_board_info(CE5xx_sflash_devices,1);
+out_unregister_master:
+	spi_dev_put(c->spi_device);
+	c->spi_device = NULL;
+	spi_unregister_master(master);
 	pci_set_drvdata(pdev, NULL);
 
 	if (c->workqueue)
@@ -792,7 +802,9 @@ static void ce5xx_sflash_remove(struct pci_dev *pdev)
 	flush_workqueue(c->workqueue);
 
 	unregister_reboot_notifier(c->reboot_notifier);
-	spi_unregister_board_info(CE5xx_sflash_devices,1);	
+	if (c->spi_device)
+		spi_dev_put(c->spi_device);
+	c->spi_device = NULL;
 	pci_set_drvdata(pdev,NULL);	
 	if (c->workqueue)
 		destroy_workqueue(c->workqueue);

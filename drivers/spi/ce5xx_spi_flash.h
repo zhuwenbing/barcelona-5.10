@@ -118,6 +118,7 @@ struct ce5xx_sflash {
 	
 	struct pci_dev 				*pdev;
 	struct spi_master 			*master;
+	struct spi_device 			*spi_device;
 
 	uint16_t					mode;
 	struct flash_cs_info 		*cntl_data;			/* Device size info in each chip select */

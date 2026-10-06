@@ -24,6 +24,7 @@
 #include <linux/proc_fs.h>
 #include <linux/notifier.h>
 #include <linux/delay.h>
+#include <linux/timer.h>
 #include <asm/io.h>
 #include <linux/vt_kern.h>
 #include <linux/reboot.h>
@@ -60,7 +61,7 @@ struct wdt_setting {
 };
 static LIST_HEAD(wdt_handlers);
 extern int pm51_wdtset(uint8_t val); 
-static void  wdt_timeout(unsigned long x);
+static void wdt_timeout(struct timer_list *timer);
 static int wdt_disable=0;
 module_param(wdt_disable, int, S_IRUGO | S_IWUSR);
 //IEC-ADD by EDEN for kernel wdtSetWatchdog end at 20151113
@@ -291,13 +292,12 @@ static int proc_board_io_open(struct inode *inode, struct file *file)
 	return single_open(file, proc_board_io_show, NULL);
 }
 
-static struct file_operations proc_board_io_operations = {
-	.owner = THIS_MODULE,
-	.open = proc_board_io_open,
-	.read = seq_read,
-	.write = proc_board_io_write,
-	.llseek = seq_lseek,
-	.release = single_release,
+static const struct proc_ops proc_board_io_operations = {
+	.proc_open = proc_board_io_open,
+	.proc_read = seq_read,
+	.proc_write = proc_board_io_write,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
 };
 
 // ----------------------------------------------------------
@@ -436,15 +436,20 @@ static ssize_t board_event_read(struct file *file, char __user * buffer,
 	return i;
 }
 
-static struct file_operations proc_board_event_operations = {
-	.owner = THIS_MODULE,
-	.read = board_event_read,
+static const struct proc_ops proc_board_event_operations = {
+	.proc_read = board_event_read,
 };
 
-static void wdt_timeout(unsigned long x)
+static void wdt_timeout(struct timer_list *timer)
 {
-	struct wdt_setting *wdtset = (struct wdt_setting *)x;
-	printk(KERN_ERR "wdt_timeout pid=%d, time_set=%d\n", wdtset->pid,wdtset->time_set);
+	struct wdt_setting *wdtset = NULL;
+
+	list_for_each_entry(wdtset, &wdt_handlers, list) {
+		if (&wdtset->timer == timer)
+			break;
+	}
+	if (wdtset)
+		printk(KERN_ERR "wdt_timeout pid=%d, time_set=%d\n", wdtset->pid, wdtset->time_set);
 	if(wdt_disable==0)wdt_disable=2;
 }
 
@@ -512,7 +517,7 @@ static ssize_t proc_wdtsetting_write(struct file *file,
 	list_add(&wdtset->list,&wdt_handlers);
 reset_timedelay:
 	wdtset->time_set=time_set;
-	setup_timer(&wdtset->timer, wdt_timeout, (unsigned long)wdtset);
+	timer_setup(&wdtset->timer, wdt_timeout, 0);
 	wdtset->timer.expires = jiffies + time_set*HZ;
 	add_timer(&wdtset->timer);
 out:	
@@ -525,9 +530,8 @@ out2:
 	return err;
 }
 
-static struct file_operations proc_wdtsetting_operations = {
-	.owner = THIS_MODULE,
-	.write = proc_wdtsetting_write,
+static const struct proc_ops proc_wdtsetting_operations = {
+	.proc_write = proc_wdtsetting_write,
 };
 
 static int sys_notify_reboot(struct notifier_block *nb, unsigned long event,

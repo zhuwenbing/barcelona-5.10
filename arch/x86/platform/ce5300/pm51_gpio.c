@@ -509,13 +509,12 @@ static int fan_io_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, fan_io_proc_show, NULL);
 }
 
-static struct file_operations proc_fan_io_operations = {
-	.owner = THIS_MODULE,
-	.open = fan_io_proc_open,
-	.read = seq_read,
-	.write = fan_io_proc_write,
-	.llseek = seq_lseek,
-	.release = single_release,
+static const struct proc_ops proc_fan_io_operations = {
+	.proc_open = fan_io_proc_open,
+	.proc_read = seq_read,
+	.proc_write = fan_io_proc_write,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
 };
 
 int pm51_init_procfs(void)
