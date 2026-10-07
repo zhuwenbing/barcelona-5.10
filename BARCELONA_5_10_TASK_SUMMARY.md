@@ -11,13 +11,15 @@
 - 基线版本：Linux 5.10.1
 - 架构：x86_64
 - 当前分支：`barcelona-5.10-port`
-- 当前提交：`fdac201dc919`
+- 当前提交：`93b205382788`（文档更新提交）
 - GitHub 分支：`zhuwenbing/barcelona-5.10.git:barcelona-5.10-port`
-- 远端提交与本地提交一致：`fdac201dc919`
+- 远端提交与本地提交一致：`93b205382788`
 - 工作区状态：干净
 - 已生成产物：
-  - `arch/x86/boot/bzImage`：约 9.0 MB
-  - `vmlinux`：约 60 MB
+  - `arch/x86/boot/bzImage`：约 9.0 MB，时间为 2026-10-07 08:48
+  - `vmlinux`：约 60 MB，时间为 2026-10-07 08:48
+- 当前配置：本地 Kconfig 生成的 `.config`，不是仓库中提交的上游 `.config`
+- 当前构建进程已结束；构建日志中未发现编译或链接错误，但尚未完成最终运行验证
 
 ## 3. 已完成的主要任务
 
@@ -99,36 +101,40 @@
 
 当前构建配置为 `CONFIG_PREEMPT_VOLUNTARY=y`，因此修复后的构建结果不能被简单地等同于原始无预emption 场景；真实配置下的行为仍需验证。
 
-## 4. 构建验证
+## 4. 构建与配置状态
 
 执行的构建命令：
 
 ```bash
-make -j"$(nproc)" bzImage modules
+make -j2 bzImage modules
 ```
 
-最终结果：
+当前结果：
 
-- 构建成功。
-- `arch/x86/boot/bzImage` 已生成。
-- `vmlinux` 已生成。
+- 构建进程已结束，日志中未发现编译或链接错误。
+- `arch/x86/boot/bzImage` 和 `vmlinux` 已生成，且均非空文件。
 - `git diff --check` 通过。
-- 构建日志中没有编译或链接错误。
-- SPI 内存 BAR 检查修复已通过构建验证。
+- SPI 内存 BAR 检查修复已进入当前构建。
 - 当前环境没有 QEMU 可执行文件，未完成真实设备或虚拟机启动验证。
-- `CONFIG_X86_INTEL_CE_GEN3=y`
-- `CONFIG_BARCELONA_BOARD=y`
-- `CONFIG_SPI_DYNAMIC=y`
-- `CONFIG_STACK_VALIDATION=y`
-- `CONFIG_UNWINDER_ORC=y`
-- `CONFIG_MODULES=y`
-- `CONFIG_PREEMPT_VOLUNTARY=y`
+- 当前 `.config` 包含以下选项：
+  - `CONFIG_X86_INTEL_CE_GEN3=y`
+  - `CONFIG_BARCELONA_BOARD=y`
+  - `CONFIG_SPI_DYNAMIC=y`
+  - `CONFIG_SPI_MEM=y`
+  - `CONFIG_STACK_VALIDATION=y`
+  - `CONFIG_UNWINDER_ORC=y`
+  - `CONFIG_MODULES=y`
+  - `CONFIG_PREEMPT_VOLUNTARY=y`
+
+已确认当前配置根据本地 Kconfig 生成；仓库中没有提交的上游 `.config` 可直接复用。当前仓库中没有找到上游配置文件，因此后续应在新的 Codespace 或正式构建环境中保留该配置，并在最终验证前重新确认它与目标构建工具链一致。
 
 已在链接内核中确认包含以下符号：
 
 - `ce5xx_sflash_probe`
 - `pm51_gpio_init`
 - CE5xx SPI 驱动初始化和重启通知符号
+
+> 当前文档记录的是静态构建产物和配置状态。最终内核是否能在 Barcelona 设备上正常启动，仍需后续硬件验证。
 
 ## 5. 已知警告
 
@@ -142,15 +148,16 @@ make -j"$(nproc)" bzImage modules
 
 这些警告不是当前构建失败的原因，但可在后续清理中逐步修复。
 
-## 6. 后续需要完成的工作
+## 6. 待办事项
 
-### 6.1 真实硬件验证
+### 6.1 真实硬件验证（高优先级）
 
 - 在 Barcelona CE5300/CE Gen3 设备上启动新内核。
 - 验证启动时是否正常进入系统。
 - 验证 DMA、SPI flash、GPIO、LED、风扇和看门狗。
 - 验证 PCI 模拟设备是否正确注册。
 - 验证重启通知和电源管理。
+- 记录启动日志、设备注册结果和异常信息。
 
 ### 6.2 完整测试
 
@@ -162,6 +169,8 @@ make -j"$(nproc)" bzImage modules
   - `/proc` 设备接口。
   - SPI flash 读写测试。
   - 看门狗配置和触发测试。
+- 验证 `CONFIG_PREEMPT_VOLUNTARY=y` 对应的实际运行行为。
+- 验证不使用 `CONFIG_SPI_DYNAMIC=y` 时的 SPI 设备注册状态。
 
 ### 6.3 代码质量清理
 
@@ -177,8 +186,17 @@ make -j"$(nproc)" bzImage modules
 - 维护稳定的配置文件和构建说明。
 - 提供完整构建命令。
 - 添加目标架构和工具链版本相关说明。
-- 在新的 Codespace 中做一次干净构建验证。
+- 在新的 Codespace 中做一次干净构建验证，并保留完整日志。
+- 重新确认最终镜像、模块和配置是否一致。
 - 可考虑自动化的编译、静态检查和镜像验证。
+
+### 6.5 交付准备
+
+- 构建并验证 Debian 内核包。
+- 将内核和模块安装到准备好的 USB/EMMC rootfs。
+- 构建并测试 USB 安装器。
+- 在目标设备上完成闪烁和启动验证。
+- 更新最终任务总结中的验证结果和已知限制。
 
 ## 7. 注意事项
 
@@ -196,8 +214,9 @@ make -j"$(nproc)" bzImage modules
 ## 8. 建议的下一步
 
 1. 在新的 Barcelona 5.10 Codespace 中克隆或切换到 `barcelona-5.10-port`。
-2. 使用干净构建验证 `make clean && make -j"$(nproc)" bzImage modules`。
-3. 使用真实设备启动内核。
-4. 验证 SPI、GPIO、LED、风扇、看门狗和 PCI 设备。
-5. 先修复编译警告，再进行完整运行测试。
-6. 测试完成后更新文档中的验证结果。
+2. 保留并复用当前 `.config`，并确认其与目标构建工具链一致。
+3. 使用干净构建验证 `make clean && make -j"$(nproc)" bzImage modules`。
+4. 使用真实设备启动内核。
+5. 验证 SPI、GPIO、LED、风扇、看门狗和 PCI 设备。
+6. 先修复编译警告，再进行完整运行测试。
+7. 测试完成后更新文档中的验证结果。
