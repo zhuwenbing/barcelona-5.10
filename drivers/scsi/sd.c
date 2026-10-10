@@ -104,6 +104,12 @@ MODULE_ALIAS_SCSI_DEVICE(TYPE_ZBC);
 #define SD_MINORS	0
 #endif
 
+#ifdef CONFIG_X86_INTEL_CE_GEN3
+#define LED_ENABLE  0x4
+#define LED_DISABLE 0x5
+extern void iec_disk_access(int index, int act);
+#endif
+
 static void sd_config_discard(struct scsi_disk *, unsigned int);
 static void sd_config_write_same(struct scsi_disk *);
 static int  sd_revalidate_disk(struct gendisk *);
@@ -3487,6 +3493,11 @@ static int sd_probe(struct device *dev)
 		  sdp->removable ? "removable " : "");
 	scsi_autopm_put_device(sdp);
 
+#ifdef CONFIG_X86_INTEL_CE_GEN3
+	if (!strncmp(sdkp->device->host->hostt->name, "ahci", strlen("ahci")))
+		iec_disk_access(sdkp->device->host->host_no + 1, LED_ENABLE);
+#endif
+
 	return 0;
 
  out_free_index:
@@ -3525,6 +3536,11 @@ static int sd_remove(struct device *dev)
 	device_del(&sdkp->dev);
 	del_gendisk(sdkp->disk);
 	sd_shutdown(dev);
+
+#ifdef CONFIG_X86_INTEL_CE_GEN3
+	if (!strncmp(sdkp->device->host->hostt->name, "ahci", strlen("ahci")))
+		iec_disk_access(sdkp->device->host->host_no + 1, LED_DISABLE);
+#endif
 
 	free_opal_dev(sdkp->opal_dev);
 
